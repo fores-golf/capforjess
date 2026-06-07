@@ -4,7 +4,7 @@ on:
   schedule:
     # Runs every 30 minutes. 
     # If you made the repo public, you can change this to '*/10 * * * *' for 10 minutes.
-    - cron: '*/05 * * * *' 
+    - cron: '*/5 * * * *' 
   workflow_dispatch: # This line adds a button in GitHub so you can run it manually anytime
 
 jobs:
