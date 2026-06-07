@@ -49,7 +49,7 @@ def send_alert(event_data):
 def main():
     # 1. Fetch events from Capital One API
     today = datetime.datetime.now().strftime("%Y-%m-%d")
-    api_url = f"https://entertainment-bff.capitalone.com/events?date_start={today}&tag_filter=C1_EXCLUSIVE+AND+NOT+COLLAPSED&page=1&per_page=100"
+    api_url = f"https://entertainment-bff.capitalone.com/events?date_start={today}&tag_filter=C1_EXCLUSIVE+AND+NOT+COLLAPSED&page=1&per_page=200"
     
     headers = {
         "Accept": "application/json, text/plain, */*",
