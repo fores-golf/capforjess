@@ -95,6 +95,9 @@ def main():
             
             # 5. Send the rich notification
             send_alert(event)
+
+            print("🚨 DEBUG - RAW API PAYLOAD RECEIVED:")
+            print(data)
             
     print("Check complete. Database updated.")
 
