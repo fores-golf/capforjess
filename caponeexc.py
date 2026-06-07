@@ -4,18 +4,46 @@ import requests
 from supabase import create_client, Client
 
 # --- CONFIGURATION ---
-SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL"
-SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY"
-WEBHOOK_URL = "YOUR_DISCORD_OR_SLACK_WEBHOOK_URL"
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
 # Initialize Supabase Client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def send_alert(event_name, event_url):
-    """Sends a notification to your webhook."""
-    payload = {
-        "content": f"🚨 **New Capital One Exclusive:** {event_name}\nCheck it out: {event_url}"
-    }
+def send_alert(event_data):
+    """Sends a beautifully formatted notification to your webhook."""
+    # Format the local date for readability (e.g., 2026-06-07T15:00:00 -> 2026-06-07 at 15:00:00)
+    raw_date = event_data.get("local_date", "TBD")
+    formatted_date = raw_date.replace("TBD", "").replace("T", " at ")
+
+    venue_info = event_data.get("venue", {})
+    venue_name = venue_info.get("name", "Unknown Venue")
+    city = venue_info.get("city", "")
+    state = venue_info.get("state_code", "")
+    location = f"{venue_name} ({city}, {state})" if city else venue_name
+
+    event_id = event_data.get("id")
+    event_url = f"https://entertainment.capitalone.com/events/{event_id}"
+    
+    # Check if the event is marked as SOLD_OUT in its tags
+    tags = event_data.get("tags", [])
+    is_sold_out = "SOLD_OUT" in tags
+    status_emoji = "❌ SOLD OUT" if is_sold_out else "✅ TICKETS AVAILABLE"
+
+    # Construct a clean, structured text alert
+    message = (
+        f"🚨 **New Capital One Exclusive Event Detected!**\n"
+        f"--------------------------------------------\n"
+        f"🎫 **Event Name:** {event_data.get('name')}\n"
+        f"📅 **Date/Time:** {formatted_date}\n"
+        f"📍 **Location:** {location}\n"
+        f"📊 **Status:** {status_emoji}\n"
+        f"🔗 **Link:** <{event_url}>\n"
+        f"--------------------------------------------"
+    )
+
+    payload = {"content": message}
     requests.post(WEBHOOK_URL, json=payload)
 
 def main():
@@ -37,13 +65,14 @@ def main():
         print(f"Failed to fetch data! Status Code: {response.status_code}")
         return
 
-    # Look through the API response (Adjust 'events' if we find the key name is different)
     data = response.json()
-    api_events = data.get("events", []) # Or data.get("data", []) depending on debugging
+    api_events = data.get("items", []) # Updated from 'events' to 'items'
     
     if not api_events:
-        print("No events found in the API response. Double check the JSON key structure.")
+        print("No events found in the API response.")
         return
+
+    print(f"Found {len(api_events)} total events. Checking against database...")
 
     # 2. Track new events
     for event in api_events:
@@ -52,21 +81,20 @@ def main():
         event_url = f"https://entertainment.capitalone.com/events/{event_id}"
 
         # 3. Query Supabase to see if this ID already exists
-        # .execute() returns data; if the list is empty, it's a brand new event
         check_db = supabase.table("exclusive_events").select("id").eq("id", event_id).execute()
         
         if len(check_db.data) == 0:
             print(f"✨ New event detected: {event_name}")
             
-            # 4. Insert the new event into Supabase so we don't alert again next time
+            # 4. Insert the new event into Supabase so we don't alert again
             supabase.table("exclusive_events").insert({
                 "id": event_id,
                 "name": event_name,
                 "url": event_url
             }).execute()
             
-            # 5. Send the notification
-            send_alert(event_name, event_url)
+            # 5. Send the rich notification
+            send_alert(event)
             
     print("Check complete. Database updated.")
 
