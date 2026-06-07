@@ -94,7 +94,7 @@ def main():
             }).execute()
             
             # 5. Send the rich notification
-            #send_alert(event)
+            send_alert(event)
             
     print("Check complete. Database updated.")
 
